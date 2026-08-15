@@ -4,7 +4,7 @@ How I run projects, and the reusable pieces that go with it.
 
 Distilled from HUSTLER — a UK blackball pool physics sandbox that ran to
 seventy revisions. Every practice here earned its place by catching something
-real, and the failures in `PLAYBOOK.md` section 10 are as useful as
+real, and the failures in `PLAYBOOK.md` section 11 are as useful as
 the successes.
 
 ## What's here

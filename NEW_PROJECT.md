@@ -9,8 +9,23 @@ back for the life of the project.
 - [ ] `.gitattributes` with `* text=auto eol=lf` — settles line endings before
       they can become a problem
 - [ ] `.gitignore` — build dirs, venvs, caches
+- [ ] **Virtual environment created and activated, pip upgraded, THEN
+      libraries installed** — in that order, every time:
+
+      ```bash
+      python3 -m venv .venv
+      . .venv/bin/activate
+      python -m pip install --upgrade pip
+      pip install -r requirements.txt
+      ```
+
+      A stale pip resolves differently and will build from source where a
+      wheel exists. Debian/Ubuntu/Pi OS refuse a bare `pip install` anyway
+      (PEP 668) — that is the correct default, not an obstacle.
 - [ ] `requirements.txt` (or equivalent) with **pinned** versions, and a
       comment saying that adding to it is a deliberate decision
+- [ ] `.venv/` in `.gitignore` — never committed, always rebuildable from
+      `requirements.txt` alone. If it cannot be, that file is wrong.
 - [ ] `PLAYBOOK.md` copied in
 - [ ] `LICENSE`
 
@@ -38,6 +53,15 @@ Create them empty on day one; they are much harder to start at revision forty.
       exceptions that must not be "tidied away"
 - [ ] `CONTRIBUTING.md` — the baseline a newcomer runs, and why each rule
       exists
+
+## Every session afterwards
+
+Activate the venv first. A session that starts by installing something
+system-wide has already gone wrong:
+
+```bash
+cd ~/project && . .venv/bin/activate
+```
 
 ## Session one with an assistant
 

@@ -8,7 +8,55 @@ than rediscovering it.
 
 ---
 
-## 1. The agreement
+## 1. The environment
+
+Before any library is installed, on every machine, every project:
+
+```bash
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+**A venv, always.** Not because a project needs isolation on day one, but
+because the day it does need it is the day you have already polluted the
+system Python and cannot tell what the project actually depends on. Debian,
+Ubuntu and Raspberry Pi OS now enforce this anyway (PEP 668) and will refuse a
+bare `pip install` — treat that as the correct default rather than an obstacle
+to work around with `--break-system-packages`.
+
+**Upgrade pip before installing anything.** A stale pip resolves differently,
+and on ARM or a new Python version it will fall back to building a package
+from source where a prebuilt wheel exists — the difference between four
+seconds and twenty minutes, or between a clean install and a missing
+compiler.
+
+**Pin the versions.** `requirements.txt` carries exact versions, and adding to
+it is a deliberate decision, not a convenience. Write that intent in the file
+itself:
+
+```
+# Dependencies — these, and nothing else.
+# Adding to this file needs an explicit decision.
+pygame==2.6.1
+pymunk==7.3.0
+```
+
+Keep the dependency list as short as the project can bear. A project with two
+dependencies and no asset files is one that packages, ports and reproduces
+easily — and that pays off in places you cannot predict at the start.
+
+**`.venv/` goes in `.gitignore`.** Never committed, always reproducible from
+`requirements.txt`. If it cannot be rebuilt from that file alone, the file is
+wrong.
+
+CI does exactly the same thing — same pip upgrade, same pinned install — so
+what breaks locally breaks there too, rather than only in front of a user.
+
+---
+
+## 2. The agreement
 
 **Decision → sign-off → build → validate.**
 
@@ -30,7 +78,7 @@ roadmap.
 
 ---
 
-## 2. The validation chain
+## 3. The validation chain
 
 Every change runs the same chain, and the numbers get reported:
 
@@ -54,7 +102,7 @@ that is byte-reproducible is how you prove an optimisation changed nothing.
 
 ---
 
-## 3. Assertions, and mutation testing
+## 4. Assertions, and mutation testing
 
 **One new assertion per feature**, on the pure testable core — not the
 framework-dependent wrapper.
@@ -89,7 +137,7 @@ The failure modes, all observed:
 
 ---
 
-## 4. CI that enforces numbers
+## 5. CI that enforces numbers
 
 Exit codes are not enough. A truncated file whose remaining tests all pass
 exits 0 and turns the badge green — this actually happened.
@@ -111,7 +159,7 @@ Run CI on the feature branch too, not just the trunk.
 
 ---
 
-## 5. Verify from a fresh clone
+## 6. Verify from a fresh clone
 
 After a push, **clone into a new directory and run the chain there** — do not
 trust the terminal you have been working in. It catches uncommitted files,
@@ -122,7 +170,7 @@ checkout is a real problem.
 
 ---
 
-## 6. Reproduce the fault locally before asking anyone to test
+## 7. Reproduce the fault locally before asking anyone to test
 
 The most expensive mistake in this project: a packaging bug was guessed at
 across three rounds on a second machine, with the human typing error text out
@@ -138,7 +186,7 @@ executing experiments that could have been run automatically.
 
 ---
 
-## 7. Fix the class, not the instance
+## 8. Fix the class, not the instance
 
 A test compared file paths against literals with forward slashes. It failed on
 Windows. It was fixed — in the one place that had failed. The identical fault
@@ -154,7 +202,7 @@ not a fifth careful copy.
 
 ---
 
-## 8. Documents that explain WHY
+## 9. Documents that explain WHY
 
 The repo carries the memory between sessions. What survives is *reasoning*,
 not status.
@@ -177,7 +225,7 @@ preserve.
 
 ---
 
-## 9. Delivery mechanics
+## 10. Delivery mechanics
 
 For handing files between environments:
 
@@ -192,7 +240,7 @@ For handing files between environments:
 
 ---
 
-## 10. What did not work
+## 11. What did not work
 
 Worth recording so it is not repeated:
 
