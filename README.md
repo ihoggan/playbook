@@ -12,10 +12,11 @@ the successes.
 | File | What it is |
 |---|---|
 | `PLAYBOOK.md` | The practices themselves. Read this first. |
-| `NEW_PROJECT.md` | A checklist for starting a project from scratch. |
+| `NEW_PROJECT.md` | **Step-by-step commands for starting a project.** Start here. |
 | `templates/validate.yml` | CI that enforces **counts**, not just exit codes. |
 | `templates/CONTRIBUTING.md` | Skeleton for a new repo's contributor guide. |
 | `tools/mutate.sh` | Mutation-test helper that hard-fails on a missed anchor. |
+| `tools/new-project.sh` | Scaffolds a new project in one command. |
 
 ## Using it on a new project
 
