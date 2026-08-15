@@ -1,0 +1,4 @@
+# Settle line endings before they can become a problem. Commits come from
+# Linux; this makes a stray Windows checkout harmless.
+* text=auto eol=lf
+*.png binary

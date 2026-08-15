@@ -1,0 +1,104 @@
+name: Validate
+
+# ---------------------------------------------------------------------------
+# TEMPLATE. Adjust the file names and commands; keep the SHAPE.
+#
+# The shape is: pin the COUNTS as environment variables and fail when they do
+# not match. Exit codes alone are not enough -- a truncated source file whose
+# remaining assertions all pass exits 0 and turns this workflow green. That is
+# not hypothetical; it is how a stale file once survived every check on a real
+# project for several revisions.
+#
+# Bumping these numbers is deliberate, happens in the same commit as the
+# change, and gets mentioned in the commit message. THE UPKEEP IS THE GUARD.
+# ---------------------------------------------------------------------------
+env:
+  # How many assertions the selftest must report. Not "did it pass".
+  SELFTEST_COUNT: 0
+
+  # Hash of a deterministic rendered/generated output. This is the quiet hero:
+  # it catches UNINTENDED change in output that no assertion describes. If you
+  # are deliberately re-capturing the baseline, change this hash in the same
+  # commit and say so in the message -- that is the whole point of it living
+  # in version control rather than in someone's notes.
+  BASELINE_MD5: ""
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Two versions, so a deprecation is found here and not by a user.
+        python-version: ['3.12', '3.13']
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Check syntax
+      run: |
+        python -m py_compile main.py
+        # Check EVERY tracked script, including the ones nothing imports.
+        # Helper scripts rot silently against a changing main module.
+
+    - name: Selftest — assertion COUNT, not just exit code
+      run: |
+        python main.py --selftest | tee /tmp/selftest.log
+        pass_n=$(grep -c '\[PASS\]' /tmp/selftest.log)
+        fail_n=$(grep -c '\[FAIL\]' /tmp/selftest.log || true)
+        echo "assertions: $pass_n passed, $fail_n failed (expected $SELFTEST_COUNT / 0)"
+        test "$fail_n" -eq 0
+        test "$pass_n" -eq "$SELFTEST_COUNT"
+
+    - name: Smoke test — does it actually start
+      run: python main.py --smoke
+      env:
+        SDL_VIDEODRIVER: dummy
+        SDL_AUDIODRIVER: dummy
+
+    - name: Baseline hash — unintended output change
+      run: |
+        python main.py --snap /tmp/baseline.png
+        got=$(md5sum /tmp/baseline.png | cut -d' ' -f1)
+        echo "baseline: $got (expected $BASELINE_MD5)"
+        test "$got" = "$BASELINE_MD5"
+      env:
+        SDL_VIDEODRIVER: dummy
+        SDL_AUDIODRIVER: dummy
+
+    - name: Upload artifacts on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: validation-${{ matrix.python-version }}
+        path: |
+          /tmp/selftest.log
+          /tmp/baseline.png
+        retention-days: 7
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - run: pip install pyflakes isort
+    # BLOCKING, not advisory. No continue-on-error anywhere in this file:
+    # a check that cannot fail the build is decoration.
+    - run: python -m pyflakes main.py
+    - run: python -m isort --check-only --diff main.py
