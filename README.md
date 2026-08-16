@@ -2,10 +2,60 @@
 
 How I run projects, and the reusable pieces that go with it.
 
+## Start here
+
+```bash
+git clone https://github.com/ihoggan/playbook.git ~/playbook
+~/playbook/tools/new-project.sh myproject
+cd ~/myproject && python main.py --selftest
+```
+
+Thirty seconds later you have a repo with a passing test suite, a smoke test, a
+hashable baseline, CI already pinned to those real numbers, a README, a licence
+and a mutation harness. Push it and the workflow is green on the **first**
+commit.
+
+Run it with no arguments and it asks instead:
+
+```bash
+~/playbook/tools/new-project.sh
+```
+
+For a project that already exists:
+
+```bash
+~/playbook/tools/new-project.sh --files-only ~/oldproject   # overwrites nothing
+```
+
+To see every command it would run, without running any of them:
+
+```bash
+~/playbook/tools/new-project.sh --dry-run myproject
+```
+
+That is the whole thing. Everything below is why.
+
+---
+
+## Why bother
+
+The setup that gets skipped on day one is the setup that costs most to add on
+day four hundred. A selftest that reports a **count**, a deterministic baseline
+that can be hashed, CI that fails on a wrong number rather than a wrong exit
+code — nobody builds those first, because on day one there is nothing to test.
+By the time there is, adding them means touching code you can no longer prove
+you did not break.
+
+This makes that the starting position instead of the aspiration.
+
+What it does **not** do is write the project. It gives you a spine and a
+discipline; the value is that whatever you build inside it can be changed
+safely later.
+
 Distilled from HUSTLER — a UK blackball pool physics sandbox that ran to
 seventy revisions. Every practice here earned its place by catching something
-real, and the failures in `PLAYBOOK.md` section 11 are as useful as
-the successes.
+real, and the failures in `PLAYBOOK.md` section 11 are as useful as the
+successes.
 
 ## What's here
 
@@ -22,34 +72,18 @@ the successes.
 | `tools/mutate.sh` | Mutation harness. Gives a **verdict**, not a number. |
 | `tools/new-project.sh` | Scaffolds a project. `--dry-run`, `--files-only`. |
 | `tools/selftest.py` | The playbook checking itself. |
+| `HANDOFF.md` | Where this repo is up to, and its standing decisions. |
+| `KNOWN_ISSUES.md` | Open problems, each with its diagnosis. |
+| `CHANGELOG.md` | What changed and why, including what was wrong first. |
 
-## Using it on a new project
+## Carrying it between projects
 
-```bash
-~/playbook/tools/new-project.sh              # asks
-~/playbook/tools/new-project.sh myproject    # doesn't
-```
+The scaffold puts the practices *inside* the new repo, so the first message of
+any session is:
 
-You get the practices, CI that enforces counts, the mutation harness, a README
-and licence, and a **working spine** — a `main.py` that already has
-`--selftest`, `--smoke` and `--snap`, with the CI counts filled in from a real
-run of it. Green on the first push rather than the twentieth.
-
-For a project that already exists:
-
-```bash
-~/playbook/tools/new-project.sh --files-only ~/oldproject   # overwrites nothing
-```
-
-What gets copied is listed in `SCAFFOLD_MANIFEST` and nowhere else. This
-section used to carry its own copy of that list and it was **wrong** — it
-copied `mutate.sh` without `_mutate_apply.py`, which it cannot run without.
-That is what `tools/selftest.py` is for.
-
-Then open the session with something like:
-
-> New project. Read `PLAYBOOK.md` in the repo first — that's how we
-> work. Then read `HANDOFF.md` for where the project is up to.
+> New project. Read `PLAYBOOK.md` and `MAKERS_INSTRUCTIONS.md` in the repo
+> first — that's how we work. Then read `HANDOFF.md` for where the project is
+> up to.
 
 That one line is the whole mechanism. The assistant carries nothing between
 projects on its own; a file in the repo is what makes the second project start
@@ -82,8 +116,9 @@ python3 tools/selftest.py
 
 Assertions with a count, and CI that pins the count — because a framework that
 demands a selftest of every project and has none of its own is not a framework,
-it is a suggestion. It found four real defects on its first run, three of them
-in these tools.
+it is a suggestion. It found four real defects on its first run, three of them in these tools, and
+CI then found a fifth that the selftest structurally could not — see
+`CHANGELOG.md`.
 
 When a project teaches something that generalises, add it here — including the
 mistakes. The failures transfer better than the successes, because the

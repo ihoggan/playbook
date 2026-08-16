@@ -12,7 +12,7 @@ name: Validate
 # green. Bumping it is deliberate, in the same commit, mentioned in the message.
 # ---------------------------------------------------------------------------
 env:
-  SELFTEST_COUNT: 38
+  SELFTEST_COUNT: 40
 
 on:
   push:

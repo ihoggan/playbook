@@ -245,6 +245,21 @@ def selftest(verbose=True):
     check("no document carries a rival copy of the manifest",
           no_rival_lists)
 
+    # Section 9 asks every project for these three. The repo that asks went
+    # without them until someone noticed -- the same shape as having no
+    # selftest of its own.
+    # The zip-based delivery route strips permission bits: Python's zipfile
+    # does not restore them on extract. So a round-trip through a delivered
+    # archive leaves these unrunnable, and the only symptom is "command not
+    # found" at the moment someone tries to use the harness.
+    check("the repo's own shell tools are executable",
+          lambda: all(os.access(os.path.join(ROOT, f), os.X_OK) for f in
+                      ("tools/mutate.sh", "tools/new-project.sh")))
+
+    check("the playbook carries the documents it asks of others",
+          lambda: all(os.path.isfile(os.path.join(ROOT, d)) for d in
+                      ("CHANGELOG.md", "KNOWN_ISSUES.md", "HANDOFF.md")))
+
     # -- the scaffolder -----------------------------------------------------
 
     with tempfile.TemporaryDirectory() as tmp:

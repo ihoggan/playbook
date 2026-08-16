@@ -123,3 +123,30 @@ end: 7 assertions, smoke 90 of 90, baseline
 box.
 
 ---
+
+## The documents the repo owed itself
+
+`README.md` opened with what the repo *is*. Every reader arrives asking how to
+run it, and had to hunt. That is the same shape as the four defects above —
+the thing that matters not being where the person needs it. The three commands
+now come first; the reasoning follows.
+
+Added `HANDOFF.md` (state, load-bearing architecture, standing decisions that
+should not be relitigated) and `KNOWN_ISSUES.md` (five open items, each with a
+diagnosis). Section 9 asked every project for these; the repo asking had none.
+Assertion 8 now checks that.
+
+Also found while doing it: **the zip delivery route strips permission bits.**
+Python's `zipfile` does not restore them on extract, so a repo updated from a
+delivered archive carries non-executable tools, and `cp` propagates that into
+every project scaffolded from it. The scaffolder's `chmod +x` looked redundant
+— `cp` preserves the source mode, so mutating it away survives — and is
+actually load-bearing on the route in use. Assertion 7 checks the repo's own
+tools, which is where the fault lands. Both new assertions were verified by
+breaking the thing directly rather than by text mutation, which cannot reach a
+file's presence or its mode.
+
+Validation: selftest **40/40**, 0 failed. Mutation sweep **26 mutants, 26
+caught, 0 survived, 0 non-results**. Plus two direct proofs: removing
+`KNOWN_ISSUES.md` fails assertion 8, `chmod -x tools/mutate.sh` fails
+assertion 7.
