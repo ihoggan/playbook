@@ -6,14 +6,24 @@ change is safe, then change it.
 
 ## 1. Get it into the shape everything else assumes
 
+One command. It copies the practices, the CI workflow and the mutation harness
+into a directory that already exists, and touches nothing else — no venv, no
+git, no documents, and **nothing that would overwrite the work you are
+adopting**. Your `main.py`, `README.md` and `LICENSE` stay exactly as they are.
+
 ```bash
-mkdir -p ~/oldproject/.github/workflows ~/oldproject/tools && cd ~/oldproject
-cp ~/playbook/PLAYBOOK.md ~/playbook/MAKERS_INSTRUCTIONS.md ~/playbook/.gitattributes .
-cp ~/playbook/templates/validate.yml .github/workflows/
-cp ~/playbook/templates/CONTRIBUTING.md ./CONTRIBUTING.md
-cp ~/playbook/tools/mutate.sh ~/playbook/tools/_mutate_apply.py tools/
-chmod +x tools/mutate.sh
-python3 -m venv .venv && . .venv/bin/activate && python -m pip install --upgrade pip
+~/playbook/tools/new-project.sh --files-only ~/oldproject
+```
+
+What arrives is read from `SCAFFOLD_MANIFEST` in the playbook, which is the one
+place that list lives. This page used to carry its own copy of it, and copies
+drift: the version in `README.md` copied `mutate.sh` without
+`_mutate_apply.py`, which it cannot run without.
+
+Then the environment, before any library:
+
+```bash
+cd ~/oldproject && python3 -m venv .venv && . .venv/bin/activate && python -m pip install --upgrade pip
 ```
 
 Then work out what it actually depends on and pin it:
@@ -53,7 +63,18 @@ In this order, because each one makes the next safer:
    demand.
 
 Then fill in `SELFTEST_COUNT` and `BASELINE_MD5` in
-`.github/workflows/validate.yml` and push. CI green on the first push.
+`.github/workflows/validate.yml` — **read off a real run, not guessed** — and
+push:
+
+```bash
+python main.py --selftest | grep -c "\[PASS\]"
+python main.py --snap /tmp/b.out && md5sum /tmp/b.out
+```
+
+The template arrives pinned to the numbers of the *spine*, which is not your
+project. Until you replace them, CI is correctly red. That is the one case
+where red on the first push is the honest answer — the alternative is a
+workflow that passes without checking anything.
 
 ## 4. Only now, change things
 

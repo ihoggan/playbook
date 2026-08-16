@@ -7,9 +7,9 @@ numbers, never "passed".
 
 ```bash
 python -m py_compile main.py
-python main.py --selftest      # expect: ALL PASS (N assertions)
-python main.py --smoke
-python main.py --snap /tmp/b.png && md5sum /tmp/b.png
+python main.py --selftest        # expect: N assertions, 0 failed
+python main.py --smoke 90
+python main.py --snap /tmp/b.out && md5sum /tmp/b.out
 ```
 
 Counting matters more than it looks:
@@ -26,8 +26,19 @@ That is why CI pins the count and why you should check it by eye too.
 - One new assertion per feature, on the pure testable core — not the
   framework-dependent wrapper.
 - **Mutation-test it.** Break the code so the assertion should fail, and
-  confirm it does. Verify the mutation actually applied; a missed anchor looks
-  exactly like a caught mutant.
+  confirm it does:
+
+  ```bash
+  export SRC=main.py CMD=--selftest && . tools/mutate.sh
+  run_mutant "wrong constant" "* 37" "* 38"
+  mutation_summary        # non-zero exit if anything SURVIVED
+  ```
+
+  The harness gives a verdict — CAUGHT, SURVIVED, CRASHED, ANCHOR FAILED, NOT
+  APPLIED — rather than a number to interpret. Only CAUGHT and SURVIVED are
+  results at all. **A SURVIVED means the assertion is not doing its job**,
+  usually because it is circular, uses an inequality where the contract is
+  exact, or was written against data that cannot reach the branch.
 - Bump the CI counts in the same commit as the assertion.
 - Say **why** in the changelog, not just what.
 

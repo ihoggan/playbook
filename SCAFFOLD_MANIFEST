@@ -1,0 +1,32 @@
+# SCAFFOLD_MANIFEST — the one place that says what goes into a project.
+#
+# This file exists because the list used to live in four places: the script,
+# both routes in MAKERS_INSTRUCTIONS.md, ADOPT_EXISTING.md and README.md. They
+# had already drifted at one commit old — one route copied MAKERS_INSTRUCTIONS
+# and the other did not, and README's list copied mutate.sh WITHOUT
+# _mutate_apply.py, which mutate.sh cannot run without.
+#
+# That is PLAYBOOK.md section 8: if state is written in more than one place, it
+# will drift, and the cure is structural rather than a fifth careful copy.
+#
+# Format, one per line:
+#     SOURCE:DEST            copied verbatim
+#     SOURCE:DEST:render     copied with __NAME__, __YEAR__ and __HOLDER__
+#                            substituted
+#     SOURCE:DEST:new-only   only for a NEW project, skipped by --files-only,
+#                            because it would overwrite work in an existing one
+#
+# tools/selftest.sh asserts every source exists, that no destination is claimed
+# twice, that the documents carry no rival copy of this list, and that nothing
+# ships with an unsubstituted placeholder still in it.
+
+PLAYBOOK.md:PLAYBOOK.md
+MAKERS_INSTRUCTIONS.md:MAKERS_INSTRUCTIONS.md
+.gitattributes:.gitattributes
+templates/validate.yml:.github/workflows/validate.yml
+templates/CONTRIBUTING.md:CONTRIBUTING.md
+tools/mutate.sh:tools/mutate.sh
+tools/_mutate_apply.py:tools/_mutate_apply.py
+templates/README.md:README.md:render:new-only
+templates/LICENSE:LICENSE:render:new-only
+templates/main.py:main.py:render:new-only

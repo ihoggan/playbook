@@ -133,7 +133,28 @@ The failure modes, all observed:
 - **Mutations that never applied.** A failed anchor match writes nothing and
   prints a clean-looking result indistinguishable from "caught". **Hard-fail
   the mutation helper when the anchor does not match, and verify the change is
-  present in the file before running.**
+  present in the file before running.** Verify by comparing against the
+  untouched copy, not by searching for the replacement text — searching for an
+  *empty* replacement matches everything, so deletion mutants were being
+  "verified" by a check that could not fail.
+- **A crash is not a catch.** A mutant that stops the module importing means
+  the suite never reached the assertion, so the run says nothing about whether
+  the assertion works. Report it as its own verdict.
+- **Lucky vocabulary, one layer under lucky data.** A guard was tested by
+  checking the output contained the name of the file it guards. Deleting the
+  guard *survived*: the resulting `grep` error names the same file. Assert the
+  guard's **effect** — that it refuses before creating anything — not its
+  wording.
+- **Something invisible from outside needs a pure function and an impossible
+  case.** A smoke test that printed the iteration count it was *asked* for
+  rather than the count it *completed* cannot be caught end to end, because in
+  a healthy run the two numbers are equal. Split the report into a pure
+  function and hand it a case a working run cannot produce.
+- **A verdict beats a number.** The harness used to print the last line of the
+  mutated run. A catch read `0 passed` and a survivor read `3 passed` — the
+  same shape, told apart by a count you had to remember. A result you can
+  misread is barely better than a result that never happened, so the harness
+  now says CAUGHT or SURVIVED and exits non-zero on a survivor.
 
 ---
 
@@ -156,6 +177,13 @@ commit, mentioned in the message. The upkeep *is* the point.
 No `continue-on-error`. A check that cannot fail the build is decoration.
 
 Run CI on the feature branch too, not just the trunk.
+
+**Green on the first push, or say why not.** A workflow that is red from day
+one teaches you to ignore it, and by the twentieth commit the red X means
+nothing. The way to keep that promise is not to soften the check but to ship
+something honest for it to check: a scaffold that arrives with a working
+selftest, smoke test and hashable baseline, with the counts filled in **by
+running it**. Numbers pinned from a real run, never guessed.
 
 ---
 
@@ -253,3 +281,37 @@ Worth recording so it is not repeated:
   passing and got a full measurement plan in reply, which made a three-command
   job look heavy enough to abandon. Match the weight of the answer to the
   weight of the question.
+- **A guard placed after the thing it guards against.** A script checked
+  whether its selftest had failed — but ran under `set -euo pipefail`, so the
+  failing selftest killed the script on the line that *measured* it, one line
+  before the check that would have reported it. The guard was written, tested
+  by eye, and unreachable. When you deliberately run something that is allowed
+  to fail, take its failure out of the shell's hands first.
+- **Configuration by environment variable, used recursively.** A test harness
+  configured through exported variables was used to test a suite that itself
+  drove the same harness. The inner one inherited the outer one's settings and
+  quietly tested the wrong thing. Set every variable the tool reads, including
+  the ones you want empty.
+
+---
+
+## 12. Hold the practices themselves to the practices
+
+This document asked every project for a selftest that counts, a smoke test, a
+hashable baseline and CI that pins the numbers. The repo carrying it had none
+of them, and four real defects were sitting in it at one commit old — three in
+the tools it hands out:
+
+- the copy-in list lived in four places and had **already drifted**, and one
+  copy was wrong in a way that broke the mutation harness for anyone who
+  followed it
+- the scaffolded CI could not be green on the first push, which three
+  documents promised it would be
+- the harness printed a number to interpret rather than a verdict
+- it located its helper with `${BASH_SOURCE[0]}`, which zsh does not define —
+  the shell actually in use
+
+None of those were found by reading. They were found by `tools/selftest.py`
+running the real scaffolder and the real harness, and then by mutating both.
+Tooling is code, and code that is not tested is code you are trusting because
+it looks right.

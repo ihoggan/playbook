@@ -16,19 +16,35 @@ the successes.
 | `ADOPT_EXISTING.md` | Bringing an existing project up to standard. |
 | `templates/validate.yml` | CI that enforces **counts**, not just exit codes. |
 | `templates/CONTRIBUTING.md` | Skeleton for a new repo's contributor guide. |
-| `tools/mutate.sh` | Mutation-test helper that hard-fails on a missed anchor. |
-| `tools/new-project.sh` | Scaffolds a new project in one command. |
+| `SCAFFOLD_MANIFEST` | **The one place** that says what a project gets. |
+| `templates/main.py` | The spine: `--selftest`, `--smoke`, `--snap`, day one. |
+| `templates/README.md`, `templates/LICENSE` | So a new repo is not blank. |
+| `tools/mutate.sh` | Mutation harness. Gives a **verdict**, not a number. |
+| `tools/new-project.sh` | Scaffolds a project. `--dry-run`, `--files-only`. |
+| `tools/selftest.py` | The playbook checking itself. |
 
 ## Using it on a new project
 
-Copy the document into the new repo, and point the assistant at it in the
-first message of the first session:
+```bash
+~/playbook/tools/new-project.sh              # asks
+~/playbook/tools/new-project.sh myproject    # doesn't
+```
+
+You get the practices, CI that enforces counts, the mutation harness, a README
+and licence, and a **working spine** — a `main.py` that already has
+`--selftest`, `--smoke` and `--snap`, with the CI counts filled in from a real
+run of it. Green on the first push rather than the twentieth.
+
+For a project that already exists:
 
 ```bash
-cp ~/playbook/PLAYBOOK.md ~/newproject/
-cp ~/playbook/templates/validate.yml ~/newproject/.github/workflows/
-cp ~/playbook/tools/mutate.sh ~/newproject/tools/
+~/playbook/tools/new-project.sh --files-only ~/oldproject   # overwrites nothing
 ```
+
+What gets copied is listed in `SCAFFOLD_MANIFEST` and nowhere else. This
+section used to carry its own copy of that list and it was **wrong** — it
+copied `mutate.sh` without `_mutate_apply.py`, which it cannot run without.
+That is what `tools/selftest.py` is for.
 
 Then open the session with something like:
 
@@ -57,6 +73,17 @@ several revisions to clear. Windows machines download, build and test — they
 do not push.
 
 ## Keeping this repo honest
+
+It is held to its own standard:
+
+```bash
+python3 tools/selftest.py
+```
+
+Assertions with a count, and CI that pins the count — because a framework that
+demands a selftest of every project and has none of its own is not a framework,
+it is a suggestion. It found four real defects on its first run, three of them
+in these tools.
 
 When a project teaches something that generalises, add it here — including the
 mistakes. The failures transfer better than the successes, because the

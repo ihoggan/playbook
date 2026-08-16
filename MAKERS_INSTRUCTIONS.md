@@ -5,8 +5,13 @@ Starting a new project. For an existing one, see `ADOPT_EXISTING.md`.
 Step by step. Copy and paste, in order. Nothing here needs to be asked for.
 
 Two routes: **the script** does the mechanical parts in one go, **by hand**
-does the same thing explicitly if you would rather see every step. They
-produce the same result.
+does the same thing explicitly if you would rather see every step.
+
+They produce the same result, and now that is guaranteed rather than promised:
+the by-hand route is `--dry-run`, which prints the exact commands the script
+would run. It used to be a second copy of the list, and the two had already
+drifted — the script copied `MAKERS_INSTRUCTIONS.md` into the new project and
+the by-hand route did not.
 
 ---
 
@@ -32,9 +37,11 @@ Or name it up front and skip the questions:
 ```
 
 That creates `~/myproject` with the playbook, the CI workflow, the mutation
-harness, a venv with pip upgraded, the empty documents, and a first commit. It
-refuses to touch a directory that already exists, and it does **not** create or
-push to GitHub — that stays manual so nothing lands in the wrong place.
+harness, a README and licence, a venv with pip upgraded, the empty documents,
+a **working spine** (`main.py` with `--selftest`, `--smoke` and `--snap`), and
+a first commit. It refuses to touch a directory that already exists, and it
+does **not** create or push to GitHub — that stays manual so nothing lands in
+the wrong place.
 
 Put it somewhere other than `$HOME` with a second argument:
 
@@ -48,23 +55,19 @@ Then go to **step 6**.
 
 ## Route B — by hand
 
-### 1. Directory and skeleton
+Print every command the script would run, read them, then run them yourself:
 
 ```bash
-mkdir -p ~/myproject/.github/workflows ~/myproject/tools && cd ~/myproject
+~/playbook/tools/new-project.sh --dry-run myproject
 ```
 
-### 2. Copy the playbook in
+Nothing is executed. The output is the by-hand route, generated from
+`SCAFFOLD_MANIFEST` — so it cannot fall out of step with what the script
+actually does.
 
-```bash
-cp ~/playbook/PLAYBOOK.md ~/playbook/.gitattributes ~/myproject/
-cp ~/playbook/templates/validate.yml ~/myproject/.github/workflows/
-cp ~/playbook/templates/CONTRIBUTING.md ~/myproject/CONTRIBUTING.md
-cp ~/playbook/tools/mutate.sh ~/playbook/tools/_mutate_apply.py ~/myproject/tools/
-chmod +x ~/myproject/tools/mutate.sh
-```
+Two steps are worth knowing by heart rather than reading off a printout.
 
-### 3. The environment — BEFORE any library
+**The environment, before any library:**
 
 ```bash
 cd ~/myproject && python3 -m venv .venv && . .venv/bin/activate && python -m pip install --upgrade pip
@@ -74,19 +77,15 @@ Venv first, activate, upgrade pip, then install. Every machine, every project.
 A stale pip resolves differently and will build from source where a wheel
 exists. Section 1 of `PLAYBOOK.md` has the reasoning.
 
-### 4. `.gitignore` and `requirements.txt`
+**The CI numbers come from a real run**, never from a guess:
 
 ```bash
-cd ~/myproject && printf '__pycache__/\n*.pyc\n.venv/\nbuild/\ndist/\n' > .gitignore && printf '# Dependencies — these, and nothing else.\n# Adding to this file needs an explicit decision.\n' > requirements.txt
+cd ~/myproject && python main.py --selftest | grep -c "\[PASS\]"
+cd ~/myproject && python main.py --snap /tmp/b.out && md5sum /tmp/b.out
 ```
 
-### 5. The documents, empty
-
-Much harder to start at revision forty than on day one.
-
-```bash
-cd ~/myproject && printf '# Changelog\n\n---\n' > CHANGELOG.md && printf '# Known issues\n\n---\n' > KNOWN_ISSUES.md && printf '# Handoff\n\n**Status:** not started.\n\n---\n' > HANDOFF.md
-```
+Those two numbers go into `SELFTEST_COUNT` and `BASELINE_MD5` in
+`.github/workflows/validate.yml`. Route A does this for you.
 
 ---
 
@@ -151,18 +150,20 @@ own notes, or your memory.
 
 ## Before the project is really underway
 
-The scaffolding everything else rests on. Build it early; retrofitting is
-painful.
+The scaffolding everything else rests on. It now ships with the scaffold
+rather than sitting on a list of things to get round to — `main.py` arrives
+with `--selftest`, `--smoke` and `--snap` already working, and the CI counts
+already filled in from a real run. So CI is green on the **first** push, which
+is a promise this document used to make and could not keep: the workflow
+pointed at a `main.py` that did not exist yet.
 
-- [ ] **A selftest that reports a COUNT** — `--selftest` printing `[PASS]` per
-      assertion and a total
-- [ ] **A smoke test** — `--smoke`, does it start and run N times without
-      falling over
-- [ ] **A deterministic baseline** — a fixed-seed run whose output can be
-      hashed, and the hash recorded
-- [ ] Fill in `SELFTEST_COUNT` and `BASELINE_MD5` in
-      `.github/workflows/validate.yml`
-- [ ] Confirm CI is green on the first push, not on the twentieth
+What is left is to make it yours:
+
+- [ ] Replace the demo core in `main.py` with the real thing
+- [ ] Keep the three flags. Grow the selftest one assertion per feature
+- [ ] Re-pin `SELFTEST_COUNT` and `BASELINE_MD5` when the spine goes; the
+      baseline hash is only meaningful once it hashes YOUR output
+- [ ] Confirm CI is still green after the first real commit
 
 ## Per release, thereafter
 

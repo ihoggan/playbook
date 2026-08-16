@@ -11,17 +11,22 @@ name: Validate
 #
 # Bumping these numbers is deliberate, happens in the same commit as the
 # change, and gets mentioned in the commit message. THE UPKEEP IS THE GUARD.
+#
+# new-project.sh fills these in by RUNNING the scaffolded main.py, so this
+# workflow is green on the FIRST push rather than the twentieth. If you are
+# adopting an existing project, fill them in the same way -- run the thing,
+# read the numbers off it, do not guess.
 # ---------------------------------------------------------------------------
 env:
   # How many assertions the selftest must report. Not "did it pass".
-  SELFTEST_COUNT: 0
+  SELFTEST_COUNT: 7
 
-  # Hash of a deterministic rendered/generated output. This is the quiet hero:
-  # it catches UNINTENDED change in output that no assertion describes. If you
+  # Hash of a deterministic generated output. This is the quiet hero: it
+  # catches UNINTENDED change in output that no assertion describes. If you
   # are deliberately re-capturing the baseline, change this hash in the same
   # commit and say so in the message -- that is the whole point of it living
   # in version control rather than in someone's notes.
-  BASELINE_MD5: ""
+  BASELINE_MD5: "135e2fc4ac5bb293582e750fc7f1c0e0"
 
 on:
   push:
@@ -51,9 +56,9 @@ jobs:
 
     - name: Check syntax
       run: |
-        python -m py_compile main.py
         # Check EVERY tracked script, including the ones nothing imports.
         # Helper scripts rot silently against a changing main module.
+        python -m py_compile $(git ls-files '*.py')
 
     - name: Selftest — assertion COUNT, not just exit code
       run: |
@@ -65,15 +70,15 @@ jobs:
         test "$pass_n" -eq "$SELFTEST_COUNT"
 
     - name: Smoke test — does it actually start
-      run: python main.py --smoke
+      run: python main.py --smoke 90
       env:
         SDL_VIDEODRIVER: dummy
         SDL_AUDIODRIVER: dummy
 
     - name: Baseline hash — unintended output change
       run: |
-        python main.py --snap /tmp/baseline.png
-        got=$(md5sum /tmp/baseline.png | cut -d' ' -f1)
+        python main.py --snap /tmp/baseline.out
+        got=$(md5sum /tmp/baseline.out | cut -d' ' -f1)
         echo "baseline: $got (expected $BASELINE_MD5)"
         test "$got" = "$BASELINE_MD5"
       env:
@@ -87,7 +92,7 @@ jobs:
         name: validation-${{ matrix.python-version }}
         path: |
           /tmp/selftest.log
-          /tmp/baseline.png
+          /tmp/baseline.out
         retention-days: 7
 
   lint:
@@ -100,5 +105,5 @@ jobs:
     - run: pip install pyflakes isort
     # BLOCKING, not advisory. No continue-on-error anywhere in this file:
     # a check that cannot fail the build is decoration.
-    - run: python -m pyflakes main.py
-    - run: python -m isort --check-only --diff main.py
+    - run: python -m pyflakes $(git ls-files '*.py')
+    - run: python -m isort --check-only --diff $(git ls-files '*.py')

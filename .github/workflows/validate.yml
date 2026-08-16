@@ -1,0 +1,80 @@
+name: Validate
+
+# ---------------------------------------------------------------------------
+# The playbook held to its own standard.
+#
+# It used to demand a selftest, a smoke test and pinned CI counts from every
+# project it touched, and have none of its own. Four real defects were sitting
+# in it at one commit old, three of them in the tools themselves.
+#
+# SELFTEST_COUNT is pinned for the same reason it is pinned everywhere else: a
+# truncated file whose remaining assertions all pass exits 0 and turns this
+# green. Bumping it is deliberate, in the same commit, mentioned in the message.
+# ---------------------------------------------------------------------------
+env:
+  SELFTEST_COUNT: 37
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.12', '3.13']
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Check syntax
+      run: python -m py_compile $(git ls-files '*.py')
+
+    - name: Shell syntax
+      run: |
+        for f in $(git ls-files '*.sh'); do bash -n "$f"; echo "ok $f"; done
+
+    - name: Selftest — assertion COUNT, not just exit code
+      run: |
+        python3 tools/selftest.py | tee /tmp/selftest.log
+        pass_n=$(grep -c '\[PASS\]' /tmp/selftest.log)
+        fail_n=$(grep -c '\[FAIL\]' /tmp/selftest.log || true)
+        echo "assertions: $pass_n passed, $fail_n failed (expected $SELFTEST_COUNT / 0)"
+        test "$fail_n" -eq 0
+        test "$pass_n" -eq "$SELFTEST_COUNT"
+
+    - name: Smoke — the scaffolder runs for real, venv and all
+      run: |
+        tools/new-project.sh smoketest /tmp/smoke
+        cd /tmp/smoke/smoketest
+        python main.py --selftest
+        python main.py --smoke 90
+        test -f .venv/bin/activate
+
+    - name: Upload artifacts on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: validation-${{ matrix.python-version }}
+        path: /tmp/selftest.log
+        retention-days: 7
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - run: pip install pyflakes isort shellcheck-py
+    # BLOCKING, not advisory. No continue-on-error anywhere in this file.
+    - run: python -m pyflakes $(git ls-files '*.py')
+    - run: python -m isort --check-only --diff $(git ls-files '*.py')
+    - run: shellcheck $(git ls-files '*.sh')
