@@ -150,3 +150,48 @@ Validation: selftest **40/40**, 0 failed. Mutation sweep **26 mutants, 26
 caught, 0 survived, 0 non-results**. Plus two direct proofs: removing
 `KNOWN_ISSUES.md` fails assertion 8, `chmod -x tools/mutate.sh` fails
 assertion 7.
+
+## Closing the open issues
+
+**zsh (#4) — closed, and it found an over-correction.** The harness was only
+ever *asserted* not to use `BASH_SOURCE`; nothing ran it under zsh. Installing
+zsh and actually running it showed the harness works — and showed that
+replacing `BASH_SOURCE` with a plain search had dropped the most reliable
+location of all, the directory `mutate.sh` sits in. Sourcing it from any other
+working directory failed, in **both** shells. Now it asks the shell where the
+file is (bash and zsh each have an answer; the zsh form is behind `eval` because
+bash cannot parse it) and falls back to the search. Both assertions are
+behavioural now, not text checks, and CI installs zsh and parses every script
+under both shells.
+
+**Baseline re-pin (#2) — closed by writing it down.** It cannot be enforced: no
+check can tell a deliberate baseline from a forgotten one. So the scaffolder
+now writes it into the new project's own `KNOWN_ISSUES.md` as issue #1, with
+the command to run. Carried rather than remembered.
+
+**Adoption (#1) — reduced, deliberately not closed.** `ADOPT_EXISTING.md` was
+driven end to end against a synthetic messy project. Four faults, all fixed:
+
+- **The dependency one-liner was wrong.** `n.names[0]` reads only the first
+  name of `import a, b, c`, so `import sys, json, os` reported `sys` and
+  dropped two. Plausible wrong output, and it scanned one file. Rewritten to
+  walk every name in every file and subtract `sys.stdlib_module_names`.
+- **No `.gitignore` arrived**, so the venv the document tells you to create sat
+  in `git status` at the step that says *commit that state untouched*. Now a
+  `keep-existing` manifest entry — delivered when absent, never overwriting
+  yours.
+- **CI hardcoded `main.py` four times.** Now one `ENTRY:` line.
+- **The lint job fails on adoption** and nothing warned. Documented, with the
+  `isort` fix placed *after* the baseline so it doubles as a rehearsal — and it
+  is, verifiably: the tally fixture's output hash was byte-identical either
+  side of it.
+
+It stays open because a synthetic fixture has no dependencies, no
+non-determinism and no history. Building one elaborate enough to supply them
+would test my imagination, not the document.
+
+Validation: selftest **44/44**, 0 failed. Mutation sweep **26 mutants, 26
+caught, 0 survived, 0 non-results**. Direct proofs for the four assertions text
+mutation cannot reach: removing `KNOWN_ISSUES.md`, `chmod -x tools/mutate.sh`,
+making `.gitignore` `new-only`, and restoring one hardcoded `main.py` each fail
+exactly one assertion.

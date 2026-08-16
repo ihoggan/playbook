@@ -57,20 +57,40 @@ MUT_SURVIVORS=0
 MUT_NONRESULTS=0
 MUT_CAUGHT=0
 
-# The helper used to be located with ${BASH_SOURCE[0]}, which zsh does not
-# define — sourcing this from zsh left the path empty, python could not find
-# the helper, and EVERY mutant reported ANCHOR FAILED: a message blaming the
-# anchor for a path problem. Search instead, and say what was looked for.
+# Finding the helper. This was once ${BASH_SOURCE[0]} alone, which zsh does not
+# define — sourcing from zsh left the path empty, python could not find the
+# helper, and EVERY mutant reported ANCHOR FAILED: a message blaming the anchor
+# for a path problem. Replacing it with a plain search then went too far the
+# other way and dropped the most reliable location of all, the directory this
+# file is in, so sourcing it from any other working directory failed. Both now:
+# ask the shell where this file is, and fall back to a search.
+# Where THIS file is, whichever shell sourced it. bash and zsh each have an
+# answer and neither understands the other's syntax, so the zsh form is hidden
+# behind eval -- bash would fail on ${(%):-%x} at parse time.
+_mut_self_dir () {
+    local self=""
+    if [ -n "${BASH_SOURCE:-}" ]; then
+        self="${BASH_SOURCE[0]}"
+    elif [ -n "${ZSH_VERSION:-}" ]; then
+        eval 'self="${(%):-%x}"'
+    fi
+    [ -n "$self" ] || return 1
+    ( cd "$(dirname "$self")" 2>/dev/null && pwd )
+}
+
 _mut_helper () {
     local c
+    local mine; mine="$(_mut_self_dir 2>/dev/null || true)"
     for c in "${MUT_HELPER:-}" \
+             "${mine:+$mine/_mutate_apply.py}" \
              "$PWD/tools/_mutate_apply.py" \
              "$PWD/_mutate_apply.py" \
              "$HOME/playbook/tools/_mutate_apply.py"; do
         [ -n "$c" ] && [ -f "$c" ] && { printf '%s' "$c"; return 0; }
     done
-    echo "NO HELPER: _mutate_apply.py not found. Looked in \$MUT_HELPER," >&2
-    echo "  ./tools/, ./ and ~/playbook/tools/. Set MUT_HELPER=/path/to/it." >&2
+    echo "NO HELPER: _mutate_apply.py not found. Looked in \$MUT_HELPER, beside" >&2
+    echo "  mutate.sh itself, ./tools/, ./ and ~/playbook/tools/." >&2
+    echo "  Set MUT_HELPER=/path/to/_mutate_apply.py." >&2
     return 1
 }
 

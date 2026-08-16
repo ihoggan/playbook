@@ -15,6 +15,7 @@
 #                            substituted
 #     SOURCE:DEST:new-only   only for a NEW project, skipped by --files-only,
 #                            because it would overwrite work in an existing one
+#     SOURCE:DEST:keep-existing  copied only when DEST does not already exist
 #
 # tools/selftest.sh asserts every source exists, that no destination is claimed
 # twice, that the documents carry no rival copy of this list, and that nothing
@@ -27,6 +28,7 @@ templates/validate.yml:.github/workflows/validate.yml
 templates/CONTRIBUTING.md:CONTRIBUTING.md
 tools/mutate.sh:tools/mutate.sh
 tools/_mutate_apply.py:tools/_mutate_apply.py
+templates/gitignore:.gitignore:keep-existing
 templates/README.md:README.md:render:new-only
 templates/LICENSE:LICENSE:render:new-only
 templates/main.py:main.py:render:new-only

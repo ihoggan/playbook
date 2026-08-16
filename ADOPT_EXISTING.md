@@ -26,15 +26,47 @@ Then the environment, before any library:
 cd ~/oldproject && python3 -m venv .venv && . .venv/bin/activate && python -m pip install --upgrade pip
 ```
 
-Then work out what it actually depends on and pin it:
+Then work out what it actually depends on and pin it. Every `.py` file, not
+just the entry point:
 
 ```bash
-python -c "import ast,sys;print(sorted({n.names[0].name.split('.')[0] for n in ast.walk(ast.parse(open(sys.argv[1]).read())) if isinstance(n,ast.Import)} | {n.module.split('.')[0] for n in ast.walk(ast.parse(open(sys.argv[1]).read())) if isinstance(n,ast.ImportFrom) and n.module}))" yourscript.py
+python3 - *.py <<'EOF'
+import ast, sys
+mods = set()
+for path in sys.argv[1:]:
+    tree = ast.parse(open(path).read())
+    for n in ast.walk(tree):
+        if isinstance(n, ast.Import):
+            for a in n.names:                 # `import a, b, c` is ONE node
+                mods.add(a.name.split(".")[0])
+        elif isinstance(n, ast.ImportFrom) and n.module and n.level == 0:
+            mods.add(n.module.split(".")[0])
+print(sorted(mods - set(sys.stdlib_module_names)))
+EOF
 ```
+
+The earlier version of this scanned one file and read `n.names[0]` only, so
+`import sys, json, os` reported `sys` and silently dropped the other two. It
+was found by adopting a real project rather than by reading it, which is the
+argument for step 2 in miniature.
 
 Install what it needs, then freeze **only** those into `requirements.txt` with
 exact versions. Not `pip freeze` wholesale — that captures the accidents of one
 machine.
+
+### What arrives already knowing it is an adoption
+
+`--files-only` skips anything that would overwrite your work, and copies a
+`.gitignore` **only if you do not already have one** — you will want it before
+the next step, because the venv you just created is otherwise sitting in
+`git status`.
+
+Two things it cannot guess:
+
+- **`.github/workflows/validate.yml` names its entry point once, at the top:**
+  `ENTRY: main.py`. Your script is not called `main.py`. Change that line.
+- **It arrives pinned to the numbers of the scaffold's demo spine**, which are
+  not yours. CI is correctly red until step 3 fills them in.
 
 ## 2. Establish a baseline BEFORE changing anything
 
@@ -75,6 +107,20 @@ The template arrives pinned to the numbers of the *spine*, which is not your
 project. Until you replace them, CI is correctly red. That is the one case
 where red on the first push is the honest answer — the alternative is a
 workflow that passes without checking anything.
+
+**Expect the lint job to fail on the first push too, and do not weaken it.**
+Existing code has almost certainly never seen `isort`, and `import sys, json,
+os` fails `--check-only` immediately. Fix it rather than the workflow, in a
+commit that changes nothing else:
+
+```bash
+python -m isort $(git ls-files '*.py') && python -m pyflakes $(git ls-files '*.py')
+git add -u && git commit -m "isort: no behaviour change"
+```
+
+Doing that *after* step 2's baseline is deliberate — it is the first change
+the baseline proves safe, which is a useful rehearsal for every change after
+it.
 
 ## 4. Only now, change things
 

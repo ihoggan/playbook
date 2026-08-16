@@ -18,6 +18,11 @@ name: Validate
 # read the numbers off it, do not guess.
 # ---------------------------------------------------------------------------
 env:
+  # The entry point. ADOPTING AN EXISTING PROJECT? Change this one line -- the
+  # script you already have is not called main.py, and four hardcoded copies of
+  # that name is four places to miss.
+  ENTRY: main.py
+
   # How many assertions the selftest must report. Not "did it pass".
   SELFTEST_COUNT: 7
 
@@ -62,7 +67,7 @@ jobs:
 
     - name: Selftest — assertion COUNT, not just exit code
       run: |
-        python main.py --selftest | tee /tmp/selftest.log
+        python $ENTRY --selftest | tee /tmp/selftest.log
         pass_n=$(grep -c '\[PASS\]' /tmp/selftest.log)
         fail_n=$(grep -c '\[FAIL\]' /tmp/selftest.log || true)
         echo "assertions: $pass_n passed, $fail_n failed (expected $SELFTEST_COUNT / 0)"
@@ -70,14 +75,14 @@ jobs:
         test "$pass_n" -eq "$SELFTEST_COUNT"
 
     - name: Smoke test — does it actually start
-      run: python main.py --smoke 90
+      run: python $ENTRY --smoke 90
       env:
         SDL_VIDEODRIVER: dummy
         SDL_AUDIODRIVER: dummy
 
     - name: Baseline hash — unintended output change
       run: |
-        python main.py --snap /tmp/baseline.out
+        python $ENTRY --snap /tmp/baseline.out
         got=$(md5sum /tmp/baseline.out | cut -d' ' -f1)
         echo "baseline: $got (expected $BASELINE_MD5)"
         test "$got" = "$BASELINE_MD5"

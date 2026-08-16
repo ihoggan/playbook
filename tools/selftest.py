@@ -37,7 +37,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MANIFEST = os.path.join(ROOT, "SCAFFOLD_MANIFEST")
 SCAFFOLD = os.path.join(ROOT, "tools", "new-project.sh")
 
-KNOWN_FLAGS = {"render", "new-only"}
+KNOWN_FLAGS = {"render", "new-only", "keep-existing"}
 PLACEHOLDERS = ("__NAME__", "__YEAR__", "__HOLDER__")
 
 
@@ -293,6 +293,13 @@ def selftest(verbose=True):
 
         # Mutation testing said so: commenting out the chmod SURVIVED the whole
         # suite. A harness that arrives unrunnable is a harness nobody runs.
+        # The one thing about the scaffold that nothing can check automatically
+        # arrives as a written-down issue instead, so it is carried rather than
+        # remembered.
+        check("the scaffold hands over the re-pin as a tracked issue",
+              lambda: "BASELINE_MD5"
+              in read(os.path.join(proj, "KNOWN_ISSUES.md")))
+
         check("the mutation harness arrives executable",
               lambda: os.access(os.path.join(proj, "tools/mutate.sh"), os.X_OK))
 
@@ -326,6 +333,11 @@ def selftest(verbose=True):
         # smoke printed the number it was ASKED for. Pin the completed count.
         check("the spine smoke test completes every iteration",
               lambda: rc_sm == 0 and "smoke: 90 of 90 iterations" in sm)
+
+        # Four hardcoded copies of "main.py" is four places an adopter misses.
+        check("CI names its entry point once, as a variable",
+              lambda: "ENTRY: main.py" in ci
+              and "python main.py" not in ci)
 
         # The template must ship pinned to the same numbers, or the very first
         # thing --files-only hands an adopted project is a wrong count.
@@ -439,6 +451,12 @@ def selftest(verbose=True):
                            "tools/_mutate_apply.py",
                            ".github/workflows/validate.yml")))
 
+        # Adoption needs a .gitignore -- the venv it tells you to create lands
+        # in git status otherwise -- but must never replace one you already
+        # have. Found by adopting a real project, not by reading the document.
+        check("files-only delivers a .gitignore when there is none",
+              lambda: os.path.isfile(os.path.join(old, ".gitignore")))
+
         check("files-only creates no repo and no venv",
               lambda: not os.path.exists(os.path.join(old, ".git"))
               and not os.path.exists(os.path.join(old, ".venv")))
@@ -499,9 +517,55 @@ def selftest(verbose=True):
 
     # -- the harness must not need bash-only syntax ---------------------------
 
-    check("harness does not rely on BASH_SOURCE",
-          lambda: "BASH_SOURCE"
-          not in code_only(read(os.path.join(ROOT, "tools/mutate.sh"))))
+    # This was a text check for the absence of BASH_SOURCE. Replaced with a
+    # behavioural one, run under BOTH shells: source the harness from a
+    # directory that has nothing to do with it, with no MUT_HELPER, and see
+    # whether it can still find its own helper.
+    #
+    # THE WORKING DIRECTORY IS THE WHOLE POINT. Running this from the repo root
+    # proves nothing -- ./tools/_mutate_apply.py is right there, so the search
+    # rescues any broken self-location and the mutant survives. That happened:
+    # deleting the zsh branch outright passed a zsh test that ran from ROOT.
+    def helper_found_from_far_away(shell):
+        tmp = tempfile.mkdtemp()
+        try:
+            toolcopy = os.path.join(tmp, "somewhere", "tools")
+            os.makedirs(toolcopy)
+            for f in ("mutate.sh", "_mutate_apply.py"):
+                shutil.copy(os.path.join(ROOT, "tools", f),
+                            os.path.join(toolcopy, f))
+            fixture = os.path.join(tmp, "somewhere", "main.py")
+            with open(fixture, "w", encoding="utf-8") as fh:
+                fh.write(FIXTURE_HONEST)
+            script = "\n".join([
+                "export SRC=%s CMD=--selftest WORK=%s/.mw" % (fixture, tmp),
+                "export TREE= RUN=",
+                ". %s/mutate.sh" % toolcopy,
+                'run_mutant "real fault" "n * 37" "n * 38"',
+            ])
+            env = dict(os.environ)
+            env.pop("MUT_HELPER", None)
+            p_far = subprocess.run([shell, "-c", script], cwd="/", env=env,
+                                   stdout=subprocess.PIPE,
+                                   stderr=subprocess.STDOUT, text=True)
+            return "CAUGHT" in p_far.stdout and "NO HELPER" not in p_far.stdout
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    check("harness works from any working directory under bash",
+          lambda: helper_found_from_far_away("bash"))
+
+    # zsh is the shell actually in use and does not define BASH_SOURCE. Run it
+    # for real where zsh exists -- CI installs it. Where it does not, fall back
+    # to a parse check: weaker, but not nothing.
+    zsh = shutil.which("zsh")
+    if zsh:
+        check("harness works from any working directory under zsh",
+              lambda: helper_found_from_far_away(zsh))
+    else:
+        rc_z, _ = sh(["bash", "-n", os.path.join(ROOT, "tools/mutate.sh")])
+        check("harness parses (zsh absent — CI covers the real run)",
+              lambda: rc_z == 0)
 
     if verbose:
         print("%d assertions, %d failed" % (n, bad))

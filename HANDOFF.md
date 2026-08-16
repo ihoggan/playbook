@@ -1,7 +1,8 @@
 # Handoff — playbook
 
-**Status:** selftest **38/38**, 0 failed. CI green on `main`. Last mutation
-sweep: **27 mutants, 27 caught, 0 survived, 0 non-results.**
+**Status:** selftest **44/44**, 0 failed. CI green on `main`. Last mutation
+sweep: **26 mutants, 26 caught, 0 survived, 0 non-results**, plus direct
+proofs for the assertions text mutation cannot reach.
 
 Read `PLAYBOOK.md` for the practices themselves. This file is for someone
 about to change *this repo* — what is load-bearing, and what has already been
@@ -64,6 +65,14 @@ reached purely.
   any caller that is itself being driven by the harness must set *every*
   variable it reads, including the ones it wants empty (`TREE=`, `RUN=`). See
   `run_harness` in `tools/selftest.py`.
+- **The manifest has three flags:** `render` (substitute `__NAME__`,
+  `__YEAR__`, `__HOLDER__`), `new-only` (skipped by `--files-only`, because it
+  would overwrite the work being adopted) and `keep-existing` (copied only when
+  the destination is absent). Adding a fourth means updating `KNOWN_FLAGS` in
+  `tools/selftest.py`, which asserts no flag is a typo.
+- **CI names its entry point once**, as `ENTRY:` at the top of
+  `templates/validate.yml`. Four hardcoded copies of `main.py` was four places
+  an adopter had to notice.
 - **`--no-venv` exists for CI and for adoption**, not as a convenience. The
   venv-first rule in `PLAYBOOK.md` section 1 still applies to real work.
 - **`shellcheck disable=SC2086` on `$CMD` in `mutate.sh` is deliberate** — it
@@ -75,8 +84,8 @@ reached purely.
 Every change runs the chain and reports the numbers, never "passed":
 
 ```bash
-python3 tools/selftest.py                  # expect: 38 assertions, 0 failed
-bash -n tools/*.sh
+python3 tools/selftest.py                  # expect: 44 assertions, 0 failed
+bash -n tools/*.sh && zsh -n tools/*.sh
 python -m pyflakes $(git ls-files '*.py')
 python -m isort --check-only $(git ls-files '*.py')
 shellcheck $(git ls-files '*.sh')

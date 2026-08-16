@@ -135,6 +135,11 @@ while IFS= read -r line; do
     case "$flags" in
         *new-only*) [ "$FILES_ONLY" -eq 1 ] && continue ;;
     esac
+    # keep-existing exists for adoption: a project being brought up to standard
+    # may already have this file, and its version wins.
+    case "$flags" in
+        *keep-existing*) [ -e "$DEST/$dst" ] && continue ;;
+    esac
 
     [ -f "$PLAYBOOK/$src" ] || { echo "REFUSING: manifest lists $src, which does not exist."; exit 1; }
 
@@ -164,16 +169,42 @@ if [ "$FILES_ONLY" -eq 1 ]; then
 fi
 
 say ""
-say "# .gitignore and requirements.txt"
-[ "$DRY" -eq 1 ] || echo "==> .gitignore and requirements.txt"
-run "printf '__pycache__/\\n*.pyc\\n.venv/\\nbuild/\\ndist/\\n.DS_Store\\n' > '$DEST/.gitignore'"
+say "# requirements.txt"
+[ "$DRY" -eq 1 ] || echo "==> requirements.txt"
 run "printf '# Dependencies — these, and nothing else.\\n# Adding to this file needs an explicit decision, not a convenience.\\n' > '$DEST/requirements.txt'"
 
 say ""
 say "# the documents, empty (much harder to start at revision forty)"
 [ "$DRY" -eq 1 ] || echo "==> empty documents (much harder to start at revision forty)"
 run "printf '# Changelog\\n\\nWhat changed and WHY — including fixes that were wrong\\nfirst, and what the wrong one taught.\\n\\n---\\n' > '$DEST/CHANGELOG.md'"
-run "printf '# Known issues\\n\\nOpen problems, each shipped with its diagnosis so the next\\nperson starts from the answer rather than the symptom.\\n\\n---\\n' > '$DEST/KNOWN_ISSUES.md'"
+run "cat > '$DEST/KNOWN_ISSUES.md' <<'ENDKI'
+# Known issues
+
+Open problems, each shipped with its diagnosis so the next
+person starts from the answer rather than the symptom.
+
+---
+
+## #1 — the pinned baseline is still the SPINE's, not yours
+
+\`BASELINE_MD5\` in \`.github/workflows/validate.yml\` is the hash of the
+demo core this project was scaffolded with. It is a real check of a real
+output — just not of anything you care about yet.
+
+Nothing can enforce fixing this, because no check can tell a deliberate
+baseline from a forgotten one. So it is written down instead.
+
+**When you replace the demo core in \`main.py\`:** make \`baseline_bytes()\`
+produce something characteristic of THIS project, then re-pin:
+
+\`\`\`bash
+python main.py --snap /tmp/b.out && md5sum /tmp/b.out
+\`\`\`
+
+Put that hash in \`BASELINE_MD5\` in the same commit, and close this issue.
+
+---
+ENDKI"
 run "printf '# Handoff — $NAME\\n\\n**Status:** scaffolded, spine only.\\n\\nCurrent state, architecture doctrine, and the standing\\nexceptions that must not be tidied away.\\n\\n---\\n' > '$DEST/HANDOFF.md'"
 
 # ---------------------------------------------------------------------------
@@ -254,7 +285,7 @@ while IFS= read -r line; do
 done <<EOF
 $(manifest_lines)
 EOF
-ADDLIST="$ADDLIST '.gitignore' 'CHANGELOG.md' 'KNOWN_ISSUES.md' 'HANDOFF.md' 'requirements.txt'"
+ADDLIST="$ADDLIST 'CHANGELOG.md' 'KNOWN_ISSUES.md' 'HANDOFF.md' 'requirements.txt'"
 
 if [ "$DRY" -eq 1 ]; then
     echo "cd '$DEST' && git add$ADDLIST"
