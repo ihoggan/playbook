@@ -1,4 +1,6 @@
-# Starting a new project
+# Maker's Instructions
+
+Starting a new project. For an existing one, see `ADOPT_EXISTING.md`.
 
 Step by step. Copy and paste, in order. Nothing here needs to be asked for.
 
@@ -9,6 +11,21 @@ produce the same result.
 ---
 
 ## Route A — the script
+
+Run it with no arguments and it asks:
+
+```bash
+~/playbook/tools/new-project.sh
+```
+
+```
+  Howdy Maker.
+
+  What's this project going to be called?
+  >
+```
+
+Or name it up front and skip the questions:
 
 ```bash
 ~/playbook/tools/new-project.sh myproject
