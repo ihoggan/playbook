@@ -29,7 +29,13 @@
 
 set -euo pipefail
 
-PLAYBOOK="${PLAYBOOK:-$HOME/playbook}"
+# Where the playbook is. Derived from THIS SCRIPT'S OWN LOCATION, not from
+# $HOME/playbook -- the clone is not always at ~/playbook, and assuming it was
+# is what made this script refuse to run in CI, where the checkout lives under
+# the runner's workspace. The script knows where it is; it should not have to
+# be told. $PLAYBOOK still overrides, for the case where the tools and the
+# documents have deliberately been separated.
+PLAYBOOK="${PLAYBOOK:-$(cd "$(dirname "$0")/.." && pwd)}"
 MANIFEST="$PLAYBOOK/SCAFFOLD_MANIFEST"
 
 DRY=0

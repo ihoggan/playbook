@@ -45,12 +45,21 @@ PLACEHOLDERS = ("__NAME__", "__YEAR__", "__HOLDER__")
 # Helpers
 # ---------------------------------------------------------------------------
 
-def sh(args, cwd=None, env=None, check=False):
-    """Run a command, return (exit code, combined output)."""
+def sh(args, cwd=None, env=None, check=False, no_playbook=False):
+    """Run a command, return (exit code, combined output).
+
+    no_playbook drops $PLAYBOOK entirely. Everything here used to set it
+    unconditionally, which is precisely why nothing noticed that the script
+    defaulted to $HOME/playbook and refused to run from a clone anywhere else.
+    A test fixture that always supplies the value cannot test the default.
+    """
     e = dict(os.environ)
     e["PLAYBOOK"] = ROOT
     if env:
         e.update(env)
+    if no_playbook:
+        e.pop("PLAYBOOK", None)
+        e["HOME"] = "/nonexistent-home-on-purpose"
     p = subprocess.run(args, cwd=cwd, env=e, stdout=subprocess.PIPE,
                        stderr=subprocess.STDOUT, text=True)
     if check and p.returncode != 0:
@@ -357,6 +366,22 @@ def selftest(verbose=True):
               lambda: rc_m != 0
               and out_m.startswith("REFUSING:")
               and not os.path.exists(os.path.join(tmp, "x")))
+
+    # -- the script must work from wherever the clone actually is ------------
+    #
+    # CI checks the repo out under the runner's workspace, not ~/playbook. The
+    # script defaulted to $HOME/playbook and refused. Run it with no $PLAYBOOK
+    # and a $HOME that does not exist: it must still find its own repo.
+
+    with tempfile.TemporaryDirectory() as tmp:
+        elsewhere = os.path.join(tmp, "clone-somewhere-else")
+        shutil.copytree(ROOT, elsewhere, ignore=shutil.ignore_patterns(".git"))
+        rc_w, out_w = sh(["bash", os.path.join(elsewhere, "tools/new-project.sh"),
+                          "--no-venv", "proj", tmp], no_playbook=True)
+
+        check("scaffold finds its playbook without being told where it is",
+              lambda: rc_w == 0
+              and os.path.isfile(os.path.join(tmp, "proj/main.py")))
 
     # -- --dry-run is the by-hand route, derived not retyped -----------------
 

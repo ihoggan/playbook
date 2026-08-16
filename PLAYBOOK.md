@@ -287,6 +287,11 @@ Worth recording so it is not repeated:
   before the check that would have reported it. The guard was written, tested
   by eye, and unreachable. When you deliberately run something that is allowed
   to fail, take its failure out of the shell's hands first.
+- **A fixture that supplies the value under test.** A script defaulted its
+  config path to `$HOME/playbook`; every test set that variable explicitly, so
+  the default was never once exercised and the script could not run from a
+  clone anywhere else. CI found it immediately. If a default matters, test with
+  it absent — and with the fallback it would use made invalid.
 - **Configuration by environment variable, used recursively.** A test harness
   configured through exported variables was used to test a suite that itself
   drove the same harness. The inner one inherited the outer one's settings and

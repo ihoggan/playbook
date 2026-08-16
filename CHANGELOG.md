@@ -83,6 +83,24 @@ them in the tools it hands out.
   describing the banned thing. A false alarm is how an assertion earns the
   right to be ignored; they now look at code, not comments.
 
+### Found by CI, after the push (70e6677)
+
+The playbook's own CI went red on the scaffolder smoke step while the selftest
+passed 37/37 on both Python versions. `new-project.sh` defaulted `PLAYBOOK` to
+`$HOME/playbook`; the runner checks the repo out under its workspace, so the
+script refused — correctly and loudly, which is why the diagnosis took one
+command.
+
+The reason nothing caught it is the interesting part: **the test fixture always
+set `$PLAYBOOK`, so it could never exercise the default.** A fixture that
+supplies the value under test is the same shape of blind spot as an assertion
+compared against its own output.
+
+*Fix:* the script derives its playbook from its own location
+(`dirname "$0"/..`), with `$PLAYBOOK` still overriding. New assertion runs the
+scaffolder from a clone somewhere else with no `$PLAYBOOK` and a `$HOME` that
+does not exist. Selftest **38**.
+
 ### Also
 
 - `tools/selftest.py` — 37 assertions, driving the real scaffolder and the
@@ -97,7 +115,7 @@ them in the tools it hands out.
   just `main.py`.
 - `PLAYBOOK.md` gains section 12 and six new failure modes in section 4.
 
-Validation: selftest **37/37**, 0 failed. Mutation sweep **25 mutants, 25
+Validation: selftest **38/38**, 0 failed. Mutation sweep **27 mutants, 27
 caught, 0 survived, 0 non-results**. pyflakes 0, isort clean, shellcheck
 clean, `bash -n` clean on both scripts. Scaffolded project verified end to
 end: 7 assertions, smoke 90 of 90, baseline
