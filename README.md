@@ -2,6 +2,8 @@
 
 How I run projects, and the reusable pieces that go with it.
 
+It was distilled from building [HUSTLER](https://github.com/IHoggan/hustler). The story of that build, mistakes included, is on my site: [building a pool physics engine, and being wrong in public](https://ihoggan.github.io/Hustler.html).
+
 ## Start here
 
 ```bash
